@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
 import bcrypt from "bcryptjs";
-const JWT_SECRET = process.env.JWT_SECRET;
+
 const AuthService = {
   register: async (userData) => {
     const { name, email, password, role } = userData;
@@ -22,9 +22,14 @@ const AuthService = {
     if (!isMatch) {
       throw new Error("Invalid email or password");
     }
-    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error("JWT secret is not configured");
+    }
+    const token = jwt.sign({ id: user._id, role: user.role }, jwtSecret, {
       expiresIn: "1d",
     });
+
     return {
       token: token,
       user: {

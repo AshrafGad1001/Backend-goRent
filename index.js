@@ -9,6 +9,7 @@ const app = express();
 app.use(express.json());
 app.use("/api/auth", authRouter);
 const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const startServer = async () => {
   await connectDB();
