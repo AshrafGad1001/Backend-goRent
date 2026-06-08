@@ -35,7 +35,7 @@ const propertySchema = new Schema(
       type: [String],
       default: [],
     },
-    // GeoJSON Point format for 2dsphere indexing
+    
     location: {
       type: {
         type: String,
