@@ -126,4 +126,103 @@ const createReview = async (req, res) => {
   }
 };
 
-export { createReview };
+const getReviews = async (req, res) => {
+  try {
+    const { targetType, propertyId, targetUserId } = req.query;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+    const skip = (page - 1) * limit;
+
+    const filter = {};
+
+    // Filter by targetType if provided
+    if (targetType) {
+      const allowedTypes = ["PROPERTY", "OWNER", "TENANT"];
+      if (!allowedTypes.includes(targetType)) {
+        return res.status(400).json({
+          message: "targetType must be PROPERTY, OWNER, or TENANT",
+        });
+      }
+      filter.targetType = targetType;
+    }
+
+    // Filter by propertyId if provided
+    if (propertyId) {
+      if (!mongoose.Types.ObjectId.isValid(propertyId)) {
+        return res.status(400).json({ message: "Invalid propertyId" });
+      }
+      filter.propertyId = propertyId;
+    }
+
+    // Filter by targetUserId if provided
+    if (targetUserId) {
+      if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+        return res.status(400).json({ message: "Invalid targetUserId" });
+      }
+      filter.targetUserId = targetUserId;
+    }
+
+    const [reviews, total] = await Promise.all([
+      Review.find(filter)
+        .populate("authorId", "name profileImage")
+        .populate("propertyId", "title images")
+        .populate("targetUserId", "name profileImage")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Review.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      message: "Reviews fetched successfully",
+      reviews,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+const deleteReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid review ID" });
+    }
+
+    const review = await Review.findById(id);
+
+    if (!review) {
+      return res.status(404).json({ message: "Review not found" });
+    }
+
+    // Only the author can delete their own review
+    if (review.authorId.toString() !== req.user.id) {
+      return res.status(403).json({
+        message: "You are not authorized to delete this review",
+      });
+    }
+
+    await Review.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      message: "Review deleted successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+export { createReview, getReviews, deleteReview };
