@@ -15,7 +15,7 @@ const bookingSchema = new mongoose.Schema(
     stripePaymentIntentId: {
       type: String,
       required: true,
-      unique: true, 
+      unique: true,
       trim: true,
     },
     amountPaid: {
@@ -30,7 +30,7 @@ const bookingSchema = new mongoose.Schema(
     },
     contractPdfUrl: {
       type: String,
-      default: "", 
+      default: "",
     },
     signatures: {
       tenantSigned: {
@@ -52,7 +52,7 @@ const bookingSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, 
+    timestamps: true,
   },
 );
 
