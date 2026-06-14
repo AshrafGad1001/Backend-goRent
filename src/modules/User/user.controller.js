@@ -16,7 +16,6 @@ export const banUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // the model uses isbanned instead of isBanned based on the user model check earlier
     user.isbanned = true;
     await user.save();
 

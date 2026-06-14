@@ -5,17 +5,15 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+      return next(new Error("Email and password are required", { cause: 400 }));
     }
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return next(new Error("User not found", { cause: 404 }));
     }
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return next(new Error("Invalid credentials", { cause: 400 }));
     }
     const token = JWT.sign(
       { id: user._id, role: user.role, name: user.name },
@@ -34,21 +32,21 @@ const login = async (req, res) => {
 
     res.status(200).json({ message: "Login successful", user });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    return next(error);
   }
 };
 
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
     if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Name, email and password are required" });
+      return next(
+        new Error("Name, email, and password are required", { cause: 400 }),
+      );
     }
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return next(new Error("User already exists", { cause: 400 }));
     }
 
     let profileImage = "";
@@ -71,7 +69,7 @@ const register = async (req, res) => {
     await user.save();
     res.status(201).json({ message: "User registered successfully", user });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    return next(error);
   }
 };
 
@@ -85,10 +83,11 @@ const logout = async (req, res) => {
     });
     return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    return res.status(500).json({
-      message: "Server error",
-      error: error.message,
-    });
+    // return res.status(500).json({
+    //   message: "Server error",
+    //   error: error.message,
+    // });
+    return next(error);
   }
 };
 const getCurrentUser = async (req, res) => {
@@ -96,19 +95,21 @@ const getCurrentUser = async (req, res) => {
     const user = await User.findById(req.user.id).select("-password");
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      // return res.status(404).json({
+      //   message: "User not found",
+      // });
+      return next(new Error("User not found", { cause: 404 }));
     }
 
     return res.status(200).json({
       user,
     });
   } catch (error) {
-    return res.status(500).json({
-      message: "Server error",
-      error: error.message,
-    });
+    // return res.status(500).json({
+    //   message: "Server error",
+    //   error: error.message,
+    // });
+    return next(error);
   }
 };
 export { login, register, logout, getCurrentUser };

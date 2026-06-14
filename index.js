@@ -31,6 +31,15 @@ app.use("/booking", bookingRouter);
 app.use("/viewing", viewingRouter);
 app.use("/api/properties", propertyRouter);
 
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
+
+app.use((err, req, res, next) => {
+  const statusCode = err.cause || 500;
+  res.status(statusCode).json({ message: err.message });
+});
+
 const startServer = async () => {
   await connectDB();
 
