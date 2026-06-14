@@ -9,7 +9,7 @@ const propertySchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["RESIDENTIAL", "COMMERCIAL"],
+      enum: ["APARTMENT", "SHOP"],
       required: true,
     },
     title: {
@@ -35,7 +35,6 @@ const propertySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-
     location: {
       type: {
         type: String,
@@ -43,7 +42,7 @@ const propertySchema = new mongoose.Schema(
         default: "Point",
       },
       coordinates: {
-        type: [Number], // [longitude, latitude]
+        type: [Number],
         required: true,
       },
     },
