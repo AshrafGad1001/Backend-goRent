@@ -225,4 +225,57 @@ const deleteReview = async (req, res) => {
   }
 };
 
-export { createReview, getReviews, deleteReview };
+const updateReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating, comment } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid review ID",
+      });
+    }
+
+    const review = await Review.findById(id);
+
+    if (!review) {
+      return res.status(404).json({
+        message: "Review not found",
+      });
+    }
+
+    if (review.authorId.toString() !== req.user.id) {
+      return res.status(403).json({
+        message: "You are not authorized to edit this review",
+      });
+    }
+
+    if (rating !== undefined) {
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return res.status(400).json({
+          message: "rating must be an integer between 1 and 5",
+        });
+      }
+
+      review.rating = rating;
+    }
+
+    if (comment !== undefined) {
+      review.comment = comment.trim();
+    }
+
+    await review.save();
+
+    return res.status(200).json({
+      message: "Review updated successfully",
+      review,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+export { createReview, getReviews, deleteReview, updateReview };

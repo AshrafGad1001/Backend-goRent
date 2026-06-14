@@ -11,6 +11,11 @@ router.post(
   verifyRole(["tenant", "owner", "admin"]),
   ReviewController.createReview,
 );
+router.patch(
+  "/:id",
+  verifyRole(["tenant", "owner", "admin"]),
+  ReviewController.updateReview,
+);
 
 router.delete(
   "/:id",
