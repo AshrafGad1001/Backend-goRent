@@ -27,8 +27,8 @@ app.use(cookieParser());
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/reviews", reviewsRouter);
-app.use("/booking", bookingRouter);
-app.use("/viewing", viewingRouter);
+app.use("/api/bookings", bookingRouter);
+app.use("/api/viewing", viewingRouter);
 app.use("/api/properties", propertyRouter);
 
 app.use((req, res) => {
