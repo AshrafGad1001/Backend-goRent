@@ -2,8 +2,8 @@ import express from "express";
 import { verifyRole, verifyAuth } from "../../Middleware/Auth.Middleware.js";
 import { validateCreateUser, validateUpdateUser } from "./user.validation.js";
 import { upload } from "../../utils/cloudinary.js";
-import { getAllUsers, getUserById, createUser, updateUser, deleteUser, banUser, unbanUser, } from "./user.controller.js";
-import { getAllUsers, getUserById, createUser, updateUser, deleteUser, banUser, unbanUser, changePassword } from "./user.controller.js";
+import { getAllUsers, getUserById, createUser, updateUser, deleteUser, banUser, unbanUser, changePassword} from "./user.controller.js";
+
 
 
 const router = express.Router();
