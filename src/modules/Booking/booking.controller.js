@@ -115,6 +115,44 @@ export const getTenantBookings = async (req, res) => {
     next(error);
   }
 };
+
+export const getOwnerBookings = async (req, res, next) => {
+  try {
+    const ownerId = req.user.id;
+    const year = Number(req.query.year);
+    const month = Number(req.query.month);
+
+    const properties = await Property.find({ ownerId }).select("_id title");
+    const propertyIds = properties.map((property) => property._id);
+
+    if (!propertyIds.length) {
+      return res.status(200).json({ bookings: [] });
+    }
+
+    const filter = {
+      propertyId: { $in: propertyIds },
+      status: { $ne: "CANCELLED" },
+    };
+
+    if (!Number.isNaN(year) && !Number.isNaN(month)) {
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+
+      filter.startDate = { $lte: endOfMonth };
+      filter.endDate = { $gte: startOfMonth };
+    }
+
+    const bookings = await Booking.find(filter)
+      .populate("propertyId", "title")
+      .populate("tenantId", "name email")
+      .sort({ startDate: 1 });
+
+    return res.status(200).json({ bookings });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export const getPropertyBookings = async (req, res) => {
   try {
     const { propertyId } = req.params;

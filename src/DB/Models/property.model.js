@@ -35,6 +35,11 @@ const propertySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    views: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     location: {
       type: {
         type: String,

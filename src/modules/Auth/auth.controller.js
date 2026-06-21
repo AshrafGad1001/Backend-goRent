@@ -1,6 +1,16 @@
 import User from "../../DB/Models/user.model.js";
 import JWT from "jsonwebtoken";
 import { uploadToCloudinary } from "../../utils/cloudinary.js";
+
+const isProduction = process.env.NODE_ENV === "production";
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 24 * 60 * 60 * 1000,
+  path: "/",
+};
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -22,13 +32,7 @@ const login = async (req, res, next) => {
         expiresIn: "1d",
       },
     );
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      maxAge: 24 * 60 * 60 * 1000,
-      path: "/",
-    });
+    res.cookie("token", token, cookieOptions);
 
     res.status(200).json({ message: "Login successful", user });
   } catch (error) {
@@ -75,12 +79,7 @@ const register = async (req, res, next) => {
 
 const logout = async (req, res) => {
   try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      sameSite: "none",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-    });
+    res.clearCookie("token", cookieOptions);
     return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     // return res.status(500).json({
