@@ -13,6 +13,7 @@ import propertyRouter from "./src/modules/Property/property.route.js";
 import reviewsRouter from "./src/modules/Reviews/reviews.route.js";
 import userRouter from "./src/modules/User/user.route.js";
 import viewingRouter from "./src/modules/Viewing/viewing.route.js";
+import reportRouter from "./src/modules/Report/report.route.js";
 import disputeRouter from "./src/modules/Dispute/dispute.route.js";
 
 const PORT = process.env.PORT || 5000;
@@ -52,6 +53,8 @@ app.use("/api/viewing", viewingRouter);
 app.use("/api/reviews", reviewsRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/disputes",disputeRouter)
+
+app.use('/api/report',reportRouter)
 
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
