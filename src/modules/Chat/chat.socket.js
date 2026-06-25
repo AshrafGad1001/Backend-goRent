@@ -9,10 +9,11 @@ import {
   markThreadMessagesSeen,
 } from "./chat.service.js";
 import { getOtherParticipantId, parseTokenFromHandshake } from "./chat.utils.js";
+import Notification from "../../DB/Models/notification.model.js";
 
 let ioInstance = null;
 
-const emitToUser = (userId, event, payload) => {
+export const emitToUser = (userId, event, payload) => {
   if (!ioInstance) {
     return;
   }
@@ -121,6 +122,21 @@ export const emitNewMessage = async (message, thread) => {
   const recipientRoom = ioInstance.sockets.adapter.rooms.get(
     `user:${recipientId.toString()}`,
   );
+
+  const notification = await Notification.create({
+    userId: recipientId,
+    type: "NEW_MESSAGE",
+    refId: message._id,
+  });
+
+  emitToUser(recipientId, "notification:new", {
+    _id: notification._id,
+    title: "New Message",
+    message: `You have received a new message.`,
+    type: "NEW_MESSAGE",
+    date: notification.createdAt,
+    isRead: false
+  });
 
   if (recipientRoom?.size) {
     const delivered = await markMessagesDelivered(
