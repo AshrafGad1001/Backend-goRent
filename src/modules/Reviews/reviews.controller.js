@@ -1,6 +1,8 @@
 import Review from "../../DB/Models/review.model.js";
+import Notification from "../../DB/Models/notification.model.js";
 import Property from "../../DB/Models/property.model.js";
 import mongoose from "mongoose";
+import { emitToUser } from "../Chat/chat.socket.js";
 
 const createReview = async (req, res, next) => {
   try {
@@ -11,9 +13,6 @@ const createReview = async (req, res, next) => {
     const allowedTypes = ["PROPERTY", "OWNER", "TENANT"];
 
     if (!targetType || !allowedTypes.includes(targetType)) {
-      // return res.status(400).json({
-      //   message: "targetType must be PROPERTY, OWNER, or TENANT",
-      // });
       return next(
         new Error("targetType must be PROPERTY, OWNER, or TENANT", {
           cause: 400,
@@ -22,14 +21,10 @@ const createReview = async (req, res, next) => {
     }
 
     if (rating === undefined || rating === null) {
-      // return res.status(400).json({ message: "rating is required" });
       return next(new Error("rating is required", { cause: 400 }));
     }
 
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-      // return res.status(400).json({
-      //   message: "rating must be an integer between 1 and 5",
-      // });
       return next(
         new Error("rating must be an integer between 1 and 5", { cause: 400 }),
       );
@@ -39,9 +34,6 @@ const createReview = async (req, res, next) => {
 
     if (targetType === "PROPERTY") {
       if (!propertyId) {
-        // return res.status(400).json({
-        //   message: "propertyId is required for PROPERTY review",
-        // });
         return next(
           new Error("propertyId is required for PROPERTY review", {
             cause: 400,
@@ -50,30 +42,22 @@ const createReview = async (req, res, next) => {
       }
 
       if (!mongoose.Types.ObjectId.isValid(propertyId)) {
-        // return res.status(400).json({ message: "Invalid propertyId" });
         return next(new Error("Invalid propertyId", { cause: 400 }));
       }
 
       property = await Property.findById(propertyId);
 
       if (!property) {
-        // return res.status(404).json({ message: "Property not found" });
         return next(new Error("Property not found", { cause: 404 }));
       }
 
       if (property.status !== "APPROVED") {
-        // return res.status(400).json({
-        //   message: "Cannot review a non-approved property",
-        // });
         return next(
           new Error("Cannot review a non-approved property", { cause: 400 }),
         );
       }
 
       if (property.ownerId.toString() === authorId) {
-        // return res.status(403).json({
-        //   message: "You cannot review your own property",
-        // });
         return next(
           new Error("You cannot review your own property", { cause: 403 }),
         );
@@ -81,14 +65,11 @@ const createReview = async (req, res, next) => {
 
       const existing = await Review.findOne({
         authorId,
-        targetUserId,
+        propertyId,
         targetType,
       });
 
       if (existing) {
-        // return res.status(409).json({
-        //   message: "You already reviewed this property",
-        // });
         return next(
           new Error("You already reviewed this property", { cause: 409 }),
         );
@@ -97,9 +78,6 @@ const createReview = async (req, res, next) => {
 
     if (targetType === "OWNER" || targetType === "TENANT") {
       if (!targetUserId) {
-        // return res.status(400).json({
-        //   message: "targetUserId is required for user review",
-        // });
         return next(
           new Error("targetUserId is required for user review", {
             cause: 400,
@@ -108,16 +86,10 @@ const createReview = async (req, res, next) => {
       }
 
       if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
-        // return res.status(400).json({
-        //   message: "Invalid targetUserId",
-        // });
         return next(new Error("Invalid targetUserId", { cause: 400 }));
       }
 
       if (targetUserId === authorId) {
-        // return res.status(403).json({
-        //   message: "You cannot review yourself",
-        // });
         return next(new Error("You cannot review yourself", { cause: 403 }));
       }
 
@@ -128,9 +100,6 @@ const createReview = async (req, res, next) => {
       });
 
       if (existing) {
-        // return res.status(409).json({
-        //   message: "You already reviewed this user",
-        // });
         return next(
           new Error("You already reviewed this user", { cause: 409 }),
         );
@@ -148,6 +117,34 @@ const createReview = async (req, res, next) => {
     });
 
     await review.save();
+
+    let notificationRecipientId = null;
+    let notificationMessage = "";
+
+    if (targetType === "PROPERTY" && property) {
+      notificationRecipientId = property.ownerId;
+      notificationMessage = `Someone left a new review on your property.`;
+    } else if (targetType === "OWNER" || targetType === "TENANT") {
+      notificationRecipientId = targetUserId;
+      notificationMessage = `Someone left a new review on your profile.`;
+    }
+
+    if (notificationRecipientId) {
+      const notification = await Notification.create({
+        userId: notificationRecipientId,
+        type: "NEW_REVIEW",
+        refId: review._id,
+      });
+
+      emitToUser(notificationRecipientId, "notification:new", {
+        _id: notification._id,
+        title: "New Review",
+        message: notificationMessage,
+        type: "NEW_REVIEW",
+        date: notification.createdAt,
+        isRead: false
+      });
+    }
 
     return res.status(201).json({
       message: "Review created successfully",
@@ -167,13 +164,9 @@ const getReviews = async (req, res, next) => {
 
     const filter = {};
 
-    // Filter by targetType if provided
     if (targetType) {
       const allowedTypes = ["PROPERTY", "OWNER", "TENANT"];
       if (!allowedTypes.includes(targetType)) {
-        // return res.status(400).json({
-        //   message: "targetType must be PROPERTY, OWNER, or TENANT",
-        // });
         return next(
           new Error("targetType must be PROPERTY, OWNER, or TENANT", {
             cause: 400,
@@ -183,19 +176,15 @@ const getReviews = async (req, res, next) => {
       filter.targetType = targetType;
     }
 
-    // Filter by propertyId if provided
     if (propertyId) {
       if (!mongoose.Types.ObjectId.isValid(propertyId)) {
-        // return res.status(400).json({ message: "Invalid propertyId" });
         return next(new Error("Invalid propertyId", { cause: 400 }));
       }
       filter.propertyId = propertyId;
     }
 
-    // Filter by targetUserId if provided
     if (targetUserId) {
       if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
-        // return res.status(400).json({ message: "Invalid targetUserId" });
         return next(new Error("Invalid targetUserId", { cause: 400 }));
       }
       filter.targetUserId = targetUserId;
@@ -232,22 +221,16 @@ const deleteReview = async (req, res, next) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      // return res.status(400).json({ message: "Invalid review ID" });
       return next(new Error("Invalid review ID", { cause: 400 }));
     }
 
     const review = await Review.findById(id);
 
     if (!review) {
-      // return res.status(404).json({ message: "Review not found" });
       return next(new Error("Review not found", { cause: 404 }));
     }
 
-    // Only the author can delete their own review
     if (review.authorId.toString() !== req.user.id) {
-      // return res.status(403).json({
-      //   message: "You are not authorized to delete this review",
-      // });
       return next(
         new Error("You are not authorized to delete this review", {
           cause: 403,
@@ -271,25 +254,16 @@ const updateReview = async (req, res) => {
     const { rating, comment } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      // return res.status(400).json({
-      //   message: "Invalid review ID",
-      // });
       return next(new Error("Invalid review ID", { cause: 400 }));
     }
 
     const review = await Review.findById(id);
 
     if (!review) {
-      // return res.status(404).json({
-      //   message: "Review not found",
-      // });
       return next(new Error("Review not found", { cause: 404 }));
     }
 
     if (review.authorId.toString() !== req.user.id) {
-      // return res.status(403).json({
-      //   message: "You are not authorized to edit this review",
-      // });
       return next(
         new Error("You are not authorized to edit this review", {
           cause: 403,
@@ -299,9 +273,6 @@ const updateReview = async (req, res) => {
 
     if (rating !== undefined) {
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-        // return res.status(400).json({
-        //   message: "rating must be an integer between 1 and 5",
-        // });
         return next(
           new Error("rating must be an integer between 1 and 5", {
             cause: 400,

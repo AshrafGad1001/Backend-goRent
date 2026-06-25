@@ -12,11 +12,13 @@ const notificationSchema = new mongoose.Schema(
       enum: [
         "NEW_MESSAGE",
         "BOOKING_CONFIRMED",
+        "BOOKING_REQUEST",
         "VIEWING_REQUEST",
         "VIEWING_ACCEPTED",
         "LISTING_APPROVED",
         "LISTING_REJECTED",
         "NEW_REVIEW",
+        "NEW_LISTING_PENDING",
       ],
       required: true,
     },
@@ -35,7 +37,7 @@ const notificationSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, 
+    timestamps: true,
   },
 );
 
