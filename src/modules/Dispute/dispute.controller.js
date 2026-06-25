@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Property from "../../DB/Models/property.model.js";
 import {logAdminAction} from "../Admin/adminLog.controller.js";
+import Dispute from "../../DB/Models/dispute.model.js";
 
 
 export const createDispute = async (req, res , next) => {
