@@ -19,6 +19,8 @@ export const getPlatformReport = async (req,res,next) =>{
             resolvedDisputes,
             ratingAgg,
             topPropertiesAgg,
+            totalReviews,
+            negativeReviews,
         ] = await Promise.all([
 
         User.countDocuments({}),
@@ -66,6 +68,8 @@ export const getPlatformReport = async (req,res,next) =>{
                     },
                 },
             ]),
+        Review.countDocuments({}),
+        Review.countDocuments({ rating: { $lte: 2 } }),
         ]);
         const totalRevenue = revenueAgg[0]?.total || 0;
         const averageRating = ratingAgg[0]?.average ? Math.round(ratingAgg[0].average * 10) / 10 : 0;
@@ -84,6 +88,8 @@ export const getPlatformReport = async (req,res,next) =>{
             resolvedDisputes,
             averageRating,
             topProperties: topPropertiesAgg,
+            totalReviews,
+            negativeReviews,
         }
         })
 
