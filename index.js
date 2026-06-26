@@ -12,6 +12,8 @@ import { initChatSocket } from "./src/modules/Chat/chat.socket.js";
 import propertyRouter from "./src/modules/Property/property.route.js";
 import reviewsRouter from "./src/modules/Reviews/reviews.route.js";
 import userRouter from "./src/modules/User/user.route.js";
+import paymentRoutes from "./src/modules/Payment/payment.route.js";
+
 import viewingRouter from "./src/modules/Viewing/viewing.route.js";
 import notificationRouter from "./src/modules/Notification/notification.route.js";
 import reportRouter from "./src/modules/Report/report.route.js";
@@ -51,6 +53,8 @@ app.use("/api/users", userRouter);
 app.use("/api/properties", propertyRouter);
 app.use("/api/bookings", bookingRouter);
 app.use("/api/viewing", viewingRouter);
+app.use("/api/properties", propertyRouter);
+app.use("/api/payment", paymentRoutes);
 app.use("/api/reviews", reviewsRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/notifications", notificationRouter);
