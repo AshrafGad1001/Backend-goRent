@@ -1,6 +1,8 @@
 import Booking from "../../DB/Models/booking.model.js";
+import Notification from "../../DB/Models/notification.model.js";
 import Property from "../../DB/Models/property.model.js";
 import User from "../../DB/Models/user.model.js";
+import { emitToUser } from "../Chat/chat.socket.js";
 
 export const createBooking = async (req, res, next) => {
   try {
@@ -68,6 +70,21 @@ export const createBooking = async (req, res, next) => {
       tenantId,
       startDate,
       endDate,
+    });
+
+    const notification = await Notification.create({
+      userId: property.ownerId,
+      type: "BOOKING_REQUEST",
+      refId: booking._id,
+    });
+
+    emitToUser(property.ownerId, "notification:new", {
+      _id: notification._id,
+      title: "New Booking Request",
+      message: `A tenant has booked your property.`,
+      type: "BOOKING_REQUEST",
+      date: notification.createdAt,
+      isRead: false
     });
 
     return res.status(201).json({

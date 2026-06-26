@@ -1,5 +1,7 @@
 import Viewing from "../../DB/Models/viewing.model.js"
+import Notification from "../../DB/Models/notification.model.js";
 import Property from "../../DB/Models/property.model.js"
+import { emitToUser } from "../Chat/chat.socket.js";
 
 // POST /viewing
 export const createViewing = async (req, res) => {
@@ -42,6 +44,21 @@ export const createViewing = async (req, res) => {
             status: "PENDING"
         })
 
+        const notification = await Notification.create({
+            userId: property.ownerId,
+            type: "VIEWING_REQUEST",
+            refId: viewing._id,
+        });
+
+        emitToUser(property.ownerId, "notification:new", {
+            _id: notification._id,
+            title: "New Viewing Request",
+            message: `A tenant has requested a viewing for your property.`,
+            type: "VIEWING_REQUEST",
+            date: notification.createdAt,
+            isRead: false
+        });
+
         return res.status(201).json({
             message: "Viewing request created successfully",
             viewing
@@ -75,6 +92,21 @@ export const acceptViewing = async (req, res) => {
 
         viewing.status = "ACCEPTED"
         await viewing.save()
+
+        const notification = await Notification.create({
+            userId: viewing.tenantId,
+            type: "VIEWING_ACCEPTED",
+            refId: viewing._id,
+        });
+
+        emitToUser(viewing.tenantId, "notification:new", {
+            _id: notification._id,
+            title: "Viewing Accepted",
+            message: `Your viewing request has been accepted.`,
+            type: "VIEWING_ACCEPTED",
+            date: notification.createdAt,
+            isRead: false
+        });
 
         return res.status(200).json({ message: "Viewing accepted", viewing })
 

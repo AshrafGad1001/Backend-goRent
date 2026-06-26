@@ -3,6 +3,9 @@ import Property from "../../DB/Models/property.model.js";
 import PropertyView from "../../DB/Models/propertyView.model.js";
 import Viewing from "../../DB/Models/viewing.model.js";
 import Booking from "../../DB/Models/booking.model.js";
+import Notification from "../../DB/Models/notification.model.js";
+import User from "../../DB/Models/user.model.js";
+import { emitToUser } from "../Chat/chat.socket.js";
 import { logAdminAction } from "../Admin/adminLog.controller.js";
 import { uploadToCloudinary } from "../../utils/cloudinary.js";
 
@@ -192,6 +195,24 @@ export const createProperty = async (req, res, next) => {
       images: imageUrls,
       status: "PENDING",
     });
+
+    const admins = await User.find({ role: { $in: ["admin", "superadmin"] } }).select("_id");
+    for (const admin of admins) {
+      const notification = await Notification.create({
+        userId: admin._id,
+        type: "NEW_LISTING_PENDING",
+        refId: property._id,
+      });
+
+      emitToUser(admin._id, "notification:new", {
+        _id: notification._id,
+        title: "New Property Listing",
+        message: `A new property "${property.title}" is pending approval.`,
+        type: "NEW_LISTING_PENDING",
+        date: notification.createdAt,
+        isRead: false
+      });
+    }
 
     return res.status(201).json({
       message: "Property created successfully",
@@ -443,6 +464,21 @@ export const approveProperty = async (req, res, next) => {
 
     await property.save();
 
+    const notification = await Notification.create({
+      userId: property.ownerId,
+      type: "LISTING_APPROVED",
+      refId: property._id,
+    });
+
+    emitToUser(property.ownerId, "notification:new", {
+      _id: notification._id,
+      title: "Listing Approved",
+      message: `Your property listing "${property.title}" has been approved.`,
+      type: "LISTING_APPROVED",
+      date: notification.createdAt,
+      isRead: false
+    });
+
     await logAdminAction({
       adminId: req.user.id,
       action: "APPROVE_LISTING",
@@ -484,6 +520,21 @@ export const rejectProperty = async (req, res, next) => {
     property.reviewedAt = new Date();
 
     await property.save();
+
+    const notification = await Notification.create({
+      userId: property.ownerId,
+      type: "LISTING_REJECTED",
+      refId: property._id,
+    });
+
+    emitToUser(property.ownerId, "notification:new", {
+      _id: notification._id,
+      title: "Listing Rejected",
+      message: `Your property listing "${property.title}" has been rejected.`,
+      type: "LISTING_REJECTED",
+      date: notification.createdAt,
+      isRead: false
+    });
 
     await logAdminAction({
       adminId: req.user.id,
@@ -652,6 +703,34 @@ export const getOwnerDashboard = async (req, res, next) => {
         },
       },
       properties: enrichedProperties,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+export const getAdminProperties = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit) || 10, 1);
+
+    const query = Property.find({}).populate(
+        "ownerId",
+        "name email phone profileImage"
+    );
+    query.sort({ createdAt: -1 });
+    const [properties, totalItems] = await Promise.all([
+      query.skip((page - 1) * limit).limit(limit),
+      Property.countDocuments({}),
+    ]);
+
+    return res.status(200).json({
+      properties,
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+      },
     });
   } catch (error) {
     return next(error);
