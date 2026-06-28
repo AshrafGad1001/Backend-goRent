@@ -171,3 +171,90 @@ export const initiateBookingFeePayment = async (req, res, next) => {
         return next(error);
     }
 };
+
+export const handleWebhook = async (req, res, next) => {
+    try {
+        const { obj } = req.body;
+
+        // Ignore non-TRANSACTION webhooks (e.g. TOKEN)
+        if (!obj || req.body.type !== "TRANSACTION") {
+            return res.status(200).json({ message: "Ignored" });
+        }
+
+        const { success, id: transactionId } = obj;
+        const merchant_order_id = obj.order?.merchant_order_id;
+
+        if (!merchant_order_id) {
+            return res.status(200).json({ message: "No merchant_order_id" });
+        }
+
+        // HMAC verification — production only
+        if (process.env.NODE_ENV === "production") {
+            const hmacSecret = process.env.PAYMOB_HMAC_SECRET;
+            const receivedHmac = req.query.hmac;
+
+            if (hmacSecret && receivedHmac) {
+                const crypto = await import("crypto");
+                const data = [
+                    obj.amount_cents,
+                    obj.created_at,
+                    obj.currency,
+                    obj.error_occured,
+                    obj.has_parent_transaction,
+                    obj.id,
+                    obj.integration_id,
+                    obj.is_3d_secure,
+                    obj.is_auth,
+                    obj.is_capture,
+                    obj.is_refunded,
+                    obj.is_standalone_payment,
+                    obj.is_voided,
+                    obj.order?.id,
+                    obj.owner,
+                    obj.pending,
+                    obj.source_data?.pan,
+                    obj.source_data?.sub_type,
+                    obj.source_data?.type,
+                    obj.success,
+                ].join("");
+
+                const expectedHmac = crypto.default
+                    .createHmac("sha512", hmacSecret)
+                    .update(data)
+                    .digest("hex");
+
+                if (expectedHmac !== receivedHmac) {
+                    return res.status(401).json({ message: "Invalid HMAC" });
+                }
+            }
+        }
+
+        const payment = await Payment.findOne({ merchantOrderId: merchant_order_id });
+        if (!payment) return res.status(200).json({ message: "Payment not found" });
+
+        payment.paymobTransactionId = transactionId?.toString();
+        payment.webhookPayload = obj;
+        payment.status = success ? "success" : "failed";
+        await payment.save();
+
+        if (success) {
+            if (payment.type === "BOOKING_FEE" && payment.bookingId) {
+                await Booking.findByIdAndUpdate(payment.bookingId, {
+                    status: "RESERVED",
+                    paymentId: payment._id,
+                });
+            }
+
+            if (payment.type === "LISTING_FEE" && payment.propertyId) {
+                await Property.findByIdAndUpdate(payment.propertyId, {
+                    listingPaid: true,
+                    status: "APPROVED",
+                });
+            }
+        }
+
+        return res.status(200).json({ message: "Webhook processed" });
+    } catch (error) {
+        return next(error);
+    }
+};

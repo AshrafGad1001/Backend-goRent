@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     initiateListingFeePayment,
     initiateBookingFeePayment,
+    handleWebhook,
 } from "./payment.controller.js";
 import { verifyAuth, verifyRole } from "../../Middleware/Auth.Middleware.js";
 
@@ -20,5 +21,7 @@ router.post(
     verifyRole(["tenant"]),
     initiateBookingFeePayment,
 );
+
+router.post("/webhook", handleWebhook);
 
 export default router;
