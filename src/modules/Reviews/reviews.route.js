@@ -6,7 +6,6 @@ const router = Router();
 
 router.get("/", ReviewController.getReviews);
 
-
 router.post(
   "/",
   verifyAuth,
