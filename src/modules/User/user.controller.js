@@ -12,11 +12,22 @@ export const getAllUsers = async (req, res) => {
     const filter = {};
 
     if (req.query.role) {
-      filter.role = req.query.role;
+      if (req.query.role === "admin") {
+        filter.role = { $in: ["admin", "superadmin"] };
+      } else {
+        filter.role = req.query.role;
+      }
     }
 
     if (req.query.isbanned !== undefined) {
       filter.isbanned = req.query.isbanned === "true";
+    }
+
+    if (req.query.search) {
+      filter.$or = [
+        { name: { $regex: req.query.search, $options: "i" } },
+        { email: { $regex: req.query.search, $options: "i" } },
+      ];
     }
 
     const [users, totalItems] = await Promise.all([
