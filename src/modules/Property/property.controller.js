@@ -715,19 +715,27 @@ export const getOwnerDashboard = async (req, res, next) => {
     return next(error);
   }
 };
-export const getAdminProperties = async (req, res) => {
+export const getAdminProperties = async (req, res, next) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit) || 10, 1);
 
-    const query = Property.find({}).populate(
+    const filter = {};
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+    if (req.query.search) {
+      filter.title = { $regex: req.query.search, $options: "i" };
+    }
+
+    const query = Property.find(filter).populate(
       "ownerId",
       "name email phone profileImage",
     );
     query.sort({ createdAt: -1 });
     const [properties, totalItems] = await Promise.all([
       query.skip((page - 1) * limit).limit(limit),
-      Property.countDocuments({}),
+      Property.countDocuments(filter),
     ]);
 
     return res.status(200).json({

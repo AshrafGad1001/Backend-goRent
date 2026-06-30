@@ -190,6 +190,10 @@ const getReviews = async (req, res, next) => {
       filter.targetUserId = targetUserId;
     }
 
+    if (req.query.search) {
+      filter.comment = { $regex: req.query.search, $options: "i" };
+    }
+
     const [reviews, total] = await Promise.all([
       Review.find(filter)
         .populate("authorId", "name profileImage")

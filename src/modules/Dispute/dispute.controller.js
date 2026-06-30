@@ -48,6 +48,13 @@ export const getDisputes = async (req , res , next ) =>{
             }
             filter.status = req.query.status;
         }
+
+        if (req.query.search) {
+            filter.$or = [
+                { subject: { $regex: req.query.search, $options: "i" } },
+                { description: { $regex: req.query.search, $options: "i" } }
+            ];
+        }
         const [disputes,totalItems] = await Promise.all([
             Dispute.find(filter).populate("propertyId","title").populate("tenantId","name email")
                 .populate("ownerId","name email").sort({createdAt:-1}).skip(skip).limit(limit),
